@@ -1,0 +1,32 @@
+# ---- SECRETS ----
+.env
+config/secrets.py
+
+# ---- DATA ----
+# Never commit large data files. Commit the generator script instead.
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/raw/sample_1000.csv
+
+# The answer key must NEVER be committed
+*ANSWER_KEY*
+
+# ---- PYTHON ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# ---- LOGS ----
+logs/*.log
+
+# ---- POWER BI ----
+*.pbix.bak
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
