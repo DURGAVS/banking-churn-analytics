@@ -114,3 +114,10 @@ print(counts.value_counts())
 print((activity["total_debit"] < 0).sum())
 print((activity["total_credit"] < 0).sum())
 print((activity["avg_balance"] < 0).sum())
+
+
+loans = pd.read_csv("data/raw/loans.csv")
+print(loans.columns.tolist())
+
+activity = pd.read_csv("data/raw/monthly_activity.csv")
+print(activity.columns.tolist())
