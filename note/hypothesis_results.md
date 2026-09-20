@@ -121,3 +121,5 @@
 > **Customer engagement variables show the strongest associations with churn, while most demographic and financial variables have small or negligible effects.**
 
 These findings will be used as a starting point for the **predictive modeling phase**.
+
+"Adding two trend features — the ratio and difference between recent and early transaction volume — raised ROC-AUC from 0.716 to 0.973. Feature engineering delivered far more than algorithm selection: the same random forest that underperformed logistic regression on snapshot features (0.693 vs 0.716) outperformed it substantially once trend was included (0.973 vs 0.933)."
