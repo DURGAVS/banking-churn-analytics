@@ -57,7 +57,7 @@ print(df["age"].describe())
 
 # filling missing credit score with median credit score
 print("before_fill_credit_null:",df["credit_score"].isna().sum())
-df["missing_credit_score"]=df["credit_score"].isna().astype(int)
+df["credit_score_was_missing"]=df["credit_score"].isna().astype(int)
 median_credit_score=df["credit_score"].median()
 df["credit_score"]=df["credit_score"].fillna(median_credit_score)
 print("median_credit_score:",median_credit_score)
@@ -66,7 +66,7 @@ print("after_fill_in_with_median_null:",df["credit_score"].isna().sum())
 
 #nulls filling with median estimated salary
 print("Null_before_filling_estimated_salary:",df["estimated_salary"].isna().sum())
-df["missing_estimated_salary"]=df["estimated_salary"].isna().astype(int)
+df["estimated_salary_was_missing"]=df["estimated_salary"].isna().astype(int)
 median_estimated_salary=df["estimated_salary"].median()
 df["estimated_salary"]=df["estimated_salary"].fillna(median_estimated_salary)
 print("median_estimate_salary:",median_estimated_salary)
@@ -96,7 +96,7 @@ print("aafter_filling_median_logins:",df["monthly_logins"].isna().sum())
 
 
 print(df.isna().sum())
-
+#creting clened csv file for loading into mysql database
 df.to_csv("data/processed/customers_clean.csv", index=False)
 print("Saved:", len(df), "rows")
 
@@ -120,3 +120,5 @@ print("Std — mine:", df["credit_score"].std().round(2))
 print("Std — answer:", answer["credit_score"].std().round(2))
 
 print("all null:",df.isna().sum())
+print(df.columns.tolist())
+
