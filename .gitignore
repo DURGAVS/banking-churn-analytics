@@ -31,3 +31,4 @@ logs/*.log
 .DS_Store
 Thumbs.db
 outputs/churn_scores.csv
+desktop.ini
