@@ -45,6 +45,30 @@ print("Rows after dedup:", len(df))
 print(df[df["customer_id"] == 117688][["customer_id", "age"]])
 
 
+# ---------------- NEW: future churn fix ----------------
+# 174 customers had churn dates after the snapshot (1 Sep 2026), which is impossible.
+# As of the snapshot they were still customers, so exited -> 0 and churn_date -> null.
+# Churns ON the snapshot date are kept because 1 Sep is inside the data.
+# Found by visualizing the monthly churn trend in Power BI.
+# Runs after dedup so duplicate rows aren't counted twice.
+
+SNAPSHOT_DATE = pd.Timestamp("2026-09-01")
+
+nulls_before = df["churn_date"].isna().sum()
+df["churn_date"] = pd.to_datetime(df["churn_date"], errors="coerce")
+print("New nulls from date conversion:", df["churn_date"].isna().sum() - nulls_before)
+
+future = df["churn_date"] > SNAPSHOT_DATE
+print("Future churn records:", future.sum())
+
+df.loc[future, "exited"] = 0
+df.loc[future, "churn_date"] = pd.NaT
+
+print("Future churn records after fix:", (df["churn_date"] > SNAPSHOT_DATE).sum())
+print("Churn rate after fix:", round(df["exited"].mean(), 4))
+# -------------------------------------------------------
+
+
 ##filling missing ages values with median age
 print("before filln age:",df["age"].isna().sum())
 df["age_was_missing"]=df["age"].isna().astype(int)
@@ -99,26 +123,3 @@ print(df.isna().sum())
 #creting clened csv file for loading into mysql database
 df.to_csv("data/processed/customers_clean.csv", index=False)
 print("Saved:", len(df), "rows")
-
-answer = pd.read_csv(r"C:\Users\Durga\OneDrive\Documents\project2 unwanted\customers_clean_ANSWER_KEY.csv")
-print("Mine:", len(df), " Answer:", len(answer))
-
-
-
-print("Churn rate — mine:", df["exited"].mean().round(4))
-print("Churn rate — answer:", answer["exited"].mean().round(4))
-
-print("\nGeography — mine:")
-print(df["geography"].value_counts())
-print("\nGeography — answer:")
-print(answer["geography"].value_counts())
-
-print("\nMean credit score — mine:", df["credit_score"].mean().round(2))
-print("Mean credit score — answer:", answer["credit_score"].mean().round(2))
-
-print("Std — mine:", df["credit_score"].std().round(2))
-print("Std — answer:", answer["credit_score"].std().round(2))
-
-print("all null:",df.isna().sum())
-print(df.columns.tolist())
-
