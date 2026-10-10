@@ -373,8 +373,9 @@ call_list = (df[df["exited"] == 0]
              .head(500)
              [["customer_id", "geography", "churn_probability",
                "risk_level", "customer_value", "expected_loss"]])
-
-call_list.to_csv("outputs/high_risk_customers.csv", index=False)
+# Disabled: 07_score_customers.py writes the call list (out-of-fold scores)
+   # call_list.to_csv("outputs/high_risk_customers.csv", index=False)
+#call_list.to_csv("outputs/high_risk_customers.csv", index=False)
 
 print(call_list.head(20))
 print("Total value at risk:", round(call_list["expected_loss"].sum(), 2))
