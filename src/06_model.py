@@ -378,3 +378,28 @@ call_list.to_csv("outputs/high_risk_customers.csv", index=False)
 
 print(call_list.head(20))
 print("Total value at risk:", round(call_list["expected_loss"].sum(), 2))
+
+
+
+# Score every customer
+df["churn_probability"] = rf.predict_proba(X)[:, 1]
+
+df["risk_level"] = pd.cut(df["churn_probability"],
+                          bins=[0, 0.3, 0.6, 1.0],
+                          labels=["Low", "Medium", "High"])
+
+# Rank by what's actually at stake, not probability alone
+df["customer_value"] = df["balance"] + df["estimated_salary"] * 0.1
+df["expected_loss"] = df["churn_probability"] * df["customer_value"]
+
+call_list = (df[df["exited"] == 0]
+             .sort_values("expected_loss", ascending=False)
+             .head(500)
+             [["customer_id", "geography", "churn_probability",
+               "risk_level", "customer_value", "expected_loss"]])
+
+call_list.to_csv("outputs/high_risk_customers.csv", index=False)
+
+print(call_list.head(20))
+print("Total value at risk:", round(call_list["expected_loss"].sum(), 2))
+print("  mean txn_ratio:", round(during["txn_ratio"].mean(), 3))
