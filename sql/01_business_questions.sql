@@ -259,8 +259,23 @@ LEFT JOIN declining d ON c.customer_id = d.customer_id
 
 GROUP BY grp;
 
+SELECT COUNT(*) AS future_churns
+FROM customers
+WHERE churn_date >= '2026-09-01';
 
+SELECT MAX(join_date) AS latest_join_date
+FROM customers;
 
+SET SQL_SAFE_UPDATES = 0;
+UPDATE customers
+SET 
+    exited = 0,
+    churn_date = NULL
+WHERE churn_date > '2026-09-01';
+SELECT COUNT(*) AS future_churns
+FROM customers
+WHERE churn_date > '2026-09-01';
 
-
+SELECT AVG(exited) FROM customers; 
+SET SQL_SAFE_UPDATES = 1;
     
