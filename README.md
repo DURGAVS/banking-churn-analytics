@@ -2,7 +2,7 @@
 
 **Which customers are about to leave the bank, why, and who should the retention team call first?**
 
-An end-to-end analytics project on a 100,000-customer banking dataset: data profiling and cleaning in Python, a MySQL database with 13 business-question queries, hypothesis testing with effect sizes, a churn prediction model, and a 4-page Power BI dashboard that ends in an actionable call list.
+An end-to-end analytics project on a 100,000-customer banking dataset: data profiling and cleaning in Python, a MySQL database with 13 business-question queries, hypothesis testing with effect sizes, a churn prediction model, a 4-page Power BI dashboard that ends in an actionable call list, and an automated pipeline that loads new weekly customer files.
 
 ![Executive overview](screenshots/01_executive_overview.png)
 
@@ -18,7 +18,7 @@ An end-to-end analytics project on a 100,000-customer banking dataset: data prof
 | **A simple SQL rule is an early-warning signal** | Customers whose transactions halved two months in a row churn at 56.6% vs 18.0% (3.1x) |
 | **Balance, gender and tenure barely matter** | Effect sizes are negligible (d ≤ 0.10, V = 0.06) despite p < 0.001 |
 | **Credit score predicts default, not churn** | Loan default is 21.4% for Poor credit vs 3.4% for Excellent (6x), but credit score has a negligible effect on churn (d = 0.10) |
-| **Risk is concentrated** | The top 500 customers (0.6% of retained customers) carry €83.3M of the €586M total value at risk (14%) |
+| **Risk is concentrated** | The top 500 customers (0.6% of retained customers) carry €83.5M of the €586M total value at risk (14%) |
 
 ### Recommendations
 
@@ -42,6 +42,10 @@ Raw CSVs (6 tables)
    → Scoring            src/07_score_customers.py  → churn_scores table + call list
    → Power BI views     sql/02_powerbi_views.sql
    → Dashboard          powerbi/
+
+Weekly automation (new customer files)
+   → Reference values   src/08_save_reference_values.py   (run once)
+   → Pipeline           src/09_run_pipeline.py  →  validate → clean (src/cleaning.py) → upsert → rescore
 ```
 
 **Tools:** Python (pandas, scikit-learn, SciPy), MySQL, SQLAlchemy, Power BI (DAX), Git
@@ -124,7 +128,7 @@ Full results: [`note/modeling_results.md`](note/modeling_results.md)
 | **Random forest** | **0.970** | **0.783** | **0.876** |
 
 - **Feature engineering mattered more than the algorithm.** Two trend features (recent vs early transaction volume) account for 72% of the random forest's feature importance and raised ROC-AUC from about 0.72 to 0.97.
-- **Out-of-fold scoring.** Every customer is scored by a model that never saw them in training. Earlier in-sample scores were overconfident and *hid* risk: the top 500 customers' expected loss rose from about €63M to €83.3M after the switch.
+- **Out-of-fold scoring.** Every customer is scored by a model that never saw them in training. Earlier in-sample scores were overconfident and *hid* risk: the top 500 customers' expected loss rose from about €63M to €83.5M after the switch.
 - **Ranked by expected loss** (probability × customer value), not probability alone, so the most valuable at-risk customers are called first.
 
 ---
@@ -145,6 +149,29 @@ Design choices: one font family, a four-colour system where coral always means c
 ![Customer behavior](screenshots/02_customer_behavior.png)
 ![Risk and prediction](screenshots/03_risk_prediction.png)
 ![Hypothesis findings](screenshots/04_hypothesis_findings.png)
+
+---
+
+## 6. Automation pipeline
+
+`src/09_run_pipeline.py` processes the weekly customer files in `data/raw/weekly_drops/`. For each file that hasn't been processed yet:
+
+1. **Validate.** The file must have every expected column. Rows with an unknown branch, an unreadable join date, or an invalid `exited` value are not loaded; they are written to `logs/rejected/` with the reason.
+2. **Clean.** `src/cleaning.py` holds the rules from `02_clean.py` as one reusable function. Missing values are filled with **fixed reference medians** (`config/reference_values.json`, saved once by `08_save_reference_values.py`), so every week follows the same rule instead of using its own batch medians.
+3. **Upsert into MySQL.** New customers are inserted and existing ones updated (`INSERT ... ON DUPLICATE KEY UPDATE`) through a staging table. A customer who reappears in a later week only replaces the stored record if the new record is at least as complete, the same "keep the cleanest row" rule used in cleaning.
+4. **Record and rescore.** Each loaded file is recorded in a `pipeline_runs` table in the same transaction as its data, so a file is never half-loaded and never loaded twice. If anything changed, every customer is rescored with `07_score_customers.py`.
+
+Everything is logged to `logs/pipeline.log`.
+
+**How it was verified:** the 8 weekly files together contain the same 100,650 raw rows as `customers_raw.csv`, with 571 of the 650 duplicate customers split across different weeks. `--test` mode loads them into an empty copy of the customers table and compares the result with `02_clean.py`'s output:
+
+| Check | Result |
+| --- | --- |
+| Customers after 8 weekly loads | 100,000 |
+| Churn rate | 19.32% |
+| Match with `customers_clean.csv` | Identical, row for row |
+| Second run on the same files | 0 files processed, no changes |
+| Customer 117688 (age-250 duplicate in week 1) | Blocked; the cleaner stored record was kept |
 
 ---
 
@@ -189,6 +216,11 @@ python src/07_score_customers.py  # score all customers → churn_scores table +
 # run sql/02_powerbi_views.sql in MySQL Workbench
 
 # 5. Open powerbi/Banking churn analytics.pbix and refresh
+
+# 6. Weekly automation
+python src/08_save_reference_values.py   # once: saves the fixed medians
+python src/09_run_pipeline.py --test     # dry run into a test table, must print TEST PASSED
+python src/09_run_pipeline.py            # real run: loads new weekly files and rescores
 ```
 
 ---
@@ -196,8 +228,9 @@ python src/07_score_customers.py  # score all customers → churn_scores table +
 ## Repository structure
 
 ```
-├── config/            database connection (reads .env)
-├── data/              raw and processed CSVs (gitignored; regenerate with the generator)
+├── config/            database connection (reads .env) and reference_values.json
+├── data/              raw, weekly and processed CSVs (gitignored; regenerate with the generator)
+├── logs/              pipeline log and rejected rows (gitignored)
 ├── note/              profiling, hypothesis and modeling write-ups
 ├── outputs/           high_risk_customers.csv (the call list)
 ├── powerbi/           dashboard (.pbix) and theme
@@ -212,6 +245,6 @@ python src/07_score_customers.py  # score all customers → churn_scores table +
 
 ## Next steps
 
-- **Automation pipeline:** process the weekly customer files in `data/raw/weekly_drops/` automatically: validate, clean, load to MySQL, rescore, and refresh the dashboard.
+- **Scheduling:** run `09_run_pipeline.py` weekly with Windows Task Scheduler, and publish the dashboard to the Power BI Service so it refreshes automatically.
 - Calculate monthly churn **rate** (not just counts) so the trend chart isn't affected by the growing customer base.
 - Compare each branch to its own country's average to find genuinely underperforming branches.

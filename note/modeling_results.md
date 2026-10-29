@@ -27,7 +27,7 @@ Features were chosen using the effect sizes from the hypothesis tests, plus two 
 Trained on 80,000 customers and tested on the remaining 20,000 (stratified split, churn rate 19.32% in both).
 
 | Model | ROC-AUC | Churner precision | Churner recall |
-| ---   | ---:    | ---:              | ---:           |
+| --- | ---: | ---: | ---: |
 | Logistic regression (test set) | 0.930 | 0.547 | 0.884 |
 | Random forest (test set) | **0.970** | **0.783** | **0.876** |
 | Random forest (5-fold out-of-fold, all 100,000 customers) | 0.971 | – | – |
@@ -49,10 +49,10 @@ In an earlier run without the trend features, ROC-AUC was roughly **0.72** for l
 The threshold decides how high a churn probability must be before a customer is flagged. Logistic regression on the test set:
 
 | Threshold | Flagged | Churners caught | Precision | Recall |
-| ---:      | ---:    | ---:            | ---:      | ---: |
-| 0.3       | 8,072   | 3,656           | 0.453     | 0.946 |
-| 0.5       | 6,236   | 3,414           | 0.547     | 0.884 |
-| 0.7       | 4,478   | 2,963 | 0.662   | 0.767     |
+| ---: | ---: | ---: | ---: | ---: |
+| 0.3 | 8,072 | 3,656 | 0.453 | 0.946 |
+| 0.5 | 6,236 | 3,414 | 0.547 | 0.884 |
+| 0.7 | 4,478 | 2,963 | 0.662 | 0.767 |
 
 **Chosen threshold: 0.3.** A missed churner means a lost customer and their full balance, while a false alarm costs one retention call. Because a missed churner is far more expensive than an unnecessary call, the threshold favours recall: 0.3 catches 94.6% of churners, 242 more than at 0.5, in exchange for about 1,800 extra calls. If the retention team's capacity is limited, 0.5 is the fallback, and the expected-loss ranking (below) ensures the most valuable customers are contacted first either way.
 
@@ -73,19 +73,21 @@ Logistic regression is less accurate, but its coefficients are easy to explain t
 
 Every customer is scored in `07_score_customers.py` using **5-fold out-of-fold predictions**: each customer is scored by a model that never saw them during training.
 
-An earlier version scored customers with the same model that had trained on them. Those in-sample scores were overconfident: retained customers the model had already seen were pushed toward zero risk, which **hid** real risk. After switching to out-of-fold scoring, the expected loss of the top 500 customers rose from about €63M to **€83.3M**.
+An earlier version scored customers with the same model that had trained on them. Those in-sample scores were overconfident: retained customers the model had already seen were pushed toward zero risk, which **hid** real risk. After switching to out-of-fold scoring, the expected loss of the top 500 customers rose from about €63M to **€83.5M**.
 
 Risk levels for the 80,681 retained customers:
 
 | Risk level | Probability | Customers |
 | --- | --- | ---: |
-| High | > 0.6 | 3,513 |
-| Medium | 0.3 – 0.6 | 4,070 |
-| Low | ≤ 0.3 | 73,098 |
+| High | > 0.6 | 3,508 |
+| Medium | 0.3 – 0.6 | 4,029 |
+| Low | ≤ 0.3 | 73,144 |
+
+These figures come from the latest scoring run, triggered by the weekly automation pipeline. Random-forest scores shift slightly between runs (the top 500 moved from €83.3M to €83.5M), but the risk split and the concentration of risk stay stable.
 
 The call list ranks retained customers by **expected loss** (churn probability × customer value), not probability alone, so the team calls the customers with the most at stake first.
 
-**Key business result:** total value at risk across all retained customers is **€586M**. The top 500 customers carry **€83.3M** of it. That means **0.6% of customers carry 14% of the risk**, so a small retention team focused on 500 people addresses a large share of the exposure.
+**Key business result:** total value at risk across all retained customers is **€586M**. The top 500 customers carry **€83.5M** of it. That means **0.6% of customers carry 14% of the risk**, so a small retention team focused on 500 people addresses a large share of the exposure.
 
 `customer_value` is defined as balance + 10% of estimated salary. This is a modeling assumption, not a standard banking metric. A real bank would use actual customer lifetime value.
 
