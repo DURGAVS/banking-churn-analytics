@@ -32,3 +32,8 @@ logs/*.log
 Thumbs.db
 outputs/churn_scores.csv
 desktop.ini
+
+logs/*.log
+logs/rejected/
+logs/*.log
+logs/rejected/
